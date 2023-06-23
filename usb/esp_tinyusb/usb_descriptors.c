@@ -17,7 +17,7 @@
  */
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
 #define USB_TUSB_PID (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
-    _PID_MAP(MIDI, 3) ) //| _PID_MAP(AUDIO, 4) | _PID_MAP(VENDOR, 5) )
+                      _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) | _PID_MAP(ECM_RNDIS, 5) | _PID_MAP(NCM, 5))
 
 /**** Kconfig driven Descriptor ****/
 
@@ -65,7 +65,7 @@ const tusb_desc_device_t descriptor_dev_kconfig = {
 //------------- Array of String Descriptors -------------//
 const char *descriptor_str_kconfig[] = {
     // array of pointer to string descriptors
-    (char[]){0x09, 0x04},                // 0: is supported language is English (0x0409)
+    (char[]){0x09, 0x04},                    // 0: is supported language is English (0x0409)
     CONFIG_TINYUSB_DESC_MANUFACTURER_STRING, // 1: Manufacturer
     CONFIG_TINYUSB_DESC_PRODUCT_STRING,      // 2: Product
     CONFIG_TINYUSB_DESC_SERIAL_STRING,       // 3: Serials, should use chip ID
@@ -82,7 +82,7 @@ const char *descriptor_str_kconfig[] = {
     "",
 #endif
 
-#if CONFIG_TINYUSB_NET_MODE_ECM_RNDIS || CONFIG_TINYUSB_NET_MODE_NCM
+#if CONFIG_TINYUSB_NET_MODE_ECM || CONFIG_TINYUSB_NET_MODE_RNDIS || CONFIG_TINYUSB_NET_MODE_NCM
     "USB net",                               // 6. NET Interface
     "",                                      // 7. MAC
 #endif
@@ -105,7 +105,7 @@ enum {
     ITF_NUM_MSC,
 #endif
 
-#if CFG_TUD_NCM
+#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
     ITF_NUM_NET,
     ITF_NUM_NET_DATA,
 #endif
@@ -117,7 +117,13 @@ enum {
     TUSB_DESC_TOTAL_LEN = TUD_CONFIG_DESC_LEN +
                           CFG_TUD_CDC * TUD_CDC_DESC_LEN +
                           CFG_TUD_MSC * TUD_MSC_DESC_LEN +
+#if CONFIG_TINYUSB_NET_MODE_ECM
+                          CFG_TUD_ECM_RNDIS * TUD_CDC_ECM_DESC_LEN
+#elif CONFIG_TINYUSB_NET_MODE_RNDIS
+                          CFG_TUD_ECM_RNDIS * TUD_RNDIS_DESC_LEN
+#elif CONFIG_TINYUSB_NET_MODE_NCM
                           CFG_TUD_NCM * TUD_CDC_NCM_DESC_LEN
+#endif
 };
 
 //------------- USB Endpoint numbers -------------//
@@ -138,7 +144,7 @@ enum {
     EPNUM_MSC,
 #endif
 
-#if CFG_TUD_NCM
+#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
     EPNUM_NET_NOTIF,
     EPNUM_NET_DATA,
 #endif
@@ -158,7 +164,7 @@ enum {
     STRID_MSC_INTERFACE,
 #endif
 
-#if CFG_TUD_NCM
+#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
     STRID_NET_INTERFACE,
     STRID_MAC,
 #endif
@@ -185,13 +191,19 @@ uint8_t const descriptor_cfg_kconfig[] = {
     TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, STRID_MSC_INTERFACE, EPNUM_MSC, 0x80 | EPNUM_MSC, 64), // highspeed 512
 #endif
 
-#if CFG_TUD_NCM
+#if CONFIG_TINYUSB_NET_MODE_ECM
+    // Interface number, description string index, MAC address string index, EP notification address and size, EP data address (out, in), and size, max segment size.
+    TUD_CDC_ECM_DESCRIPTOR(ITF_NUM_NET, STRID_NET_INTERFACE, STRID_MAC, (0x80 | EPNUM_NET_NOTIF), 64, EPNUM_NET_DATA, (0x80 | EPNUM_NET_DATA), CFG_TUD_NET_ENDPOINT_SIZE, CFG_TUD_NET_MTU),
+#elif CONFIG_TINYUSB_NET_MODE_RNDIS
+    // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_RNDIS_DESCRIPTOR(ITF_NUM_NET, STRID_NET_INTERFACE, (0x80 | EPNUM_NET_NOTIF), 8, EPNUM_NET_DATA, (0x80 | EPNUM_NET_DATA), CFG_TUD_NET_ENDPOINT_SIZE),
+#elif CONFIG_TINYUSB_NET_MODE_NCM
     // Interface number, description string index, MAC address string index, EP notification address and size, EP data address (out, in), and size, max segment size.
     TUD_CDC_NCM_DESCRIPTOR(ITF_NUM_NET, STRID_NET_INTERFACE, STRID_MAC, (0x80 | EPNUM_NET_NOTIF), 64, EPNUM_NET_DATA, (0x80 | EPNUM_NET_DATA), CFG_TUD_NET_ENDPOINT_SIZE, CFG_TUD_NET_MTU),
 #endif
 };
 
-#if CFG_TUD_NCM
+#if CONFIG_TINYUSB_NET_MODE_ECM || CONFIG_TINYUSB_NET_MODE_NCM
 uint8_t tusb_get_mac_string_id(void)
 {
     return STRID_MAC;
