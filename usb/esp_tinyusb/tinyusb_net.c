@@ -36,7 +36,7 @@ const static int TX_FINISHED_BIT = BIT0;
 static struct tinyusb_net_handle s_net_obj = { };
 static const char *TAG = "tusb_net";
 
-#if CONFIG_TINYUSB_NET_MODE_RNDIS
+#if CONFIG_TINYUSB_NET_MODE_RNDIS || CONFIG_TINYUSB_NET_MODE_ECM
 uint8_t tud_network_mac_address[6] = {0}; // for RNDIS (net_device.h, rndis_reports.c)
 #endif
 
